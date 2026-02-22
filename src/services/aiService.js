@@ -1,25 +1,29 @@
 import Groq from 'groq-sdk';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+// --- Shared Groq singleton ---
+const groqClient = new Groq({
+    apiKey: import.meta.env.VITE_GROQ_API_KEY,
+    dangerouslyAllowBrowser: true
+});
 
+// --- generateFlowchart ---
 export async function generateFlowchart(prompt, detailLevel, tone = 'Informativo', theme = 'Naturaleza', diagramType = 'Diagrama de Flujo') {
-    if (!GROQ_API_KEY) {
+    if (!import.meta.env.VITE_GROQ_API_KEY) {
         throw new Error('API Key de Groq no configurada. Por favor, añade VITE_GROQ_API_KEY en el archivo .env.');
     }
 
-    // Adjust prompt based on detail level
-    let nodeCountHint = "";
-    let descriptionHint = "";
+    let nodeCountHint = '';
+    let descriptionHint = '';
 
     if (detailLevel === 'Condensado') {
-        nodeCountHint = "3 a 5 nodos";
-        descriptionHint = "un resumen muy conciso de 1 o 2 oraciones principales";
+        nodeCountHint = '3 a 5 nodos';
+        descriptionHint = 'un resumen muy conciso de 1 o 2 oraciones principales';
     } else if (detailLevel === 'Estándar') {
-        nodeCountHint = "6 a 10 nodos";
-        descriptionHint = "una explicación clara y directa de 2 o 3 oraciones por cada punto";
+        nodeCountHint = '6 a 10 nodos';
+        descriptionHint = 'una explicación clara y directa de 2 o 3 oraciones por cada punto';
     } else if (detailLevel === 'Extenso') {
-        nodeCountHint = "12 a 20 nodos";
-        descriptionHint = "un análisis profundo y detallado paso a paso, con un texto explicativo largo en cada nodo";
+        nodeCountHint = '12 a 20 nodos';
+        descriptionHint = 'un análisis profundo y detallado paso a paso, con un texto explicativo largo en cada nodo';
     }
 
     const systemPrompt = `Eres un experto en estructuración de diagramas de conocimiento visual.
@@ -50,16 +54,10 @@ DEBES responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructu
       "id": "1",
       "type": "flora",
       "data": { "title": "Concepto Central", "content": "Detalles..." }
-    },
-    {
-      "id": "2",
-      "type": "decision",
-      "data": { "title": "¿Qué hacer?", "content": "Opciones disponibles..." }
     }
   ],
   "edges": [
-    { "id": "e1-2", "source": "1", "target": "2", "animated": true },
-    { "id": "e1-3", "source": "1", "target": "3", "animated": false }
+    { "id": "e1-2", "source": "1", "target": "2", "animated": true }
   ]
 }
 
@@ -73,46 +71,31 @@ REGLAS ESTRICTAS:
 
 Genera un ecosistema de información complejo (mecanismos, paralelos, ejemplos, riesgos) en el formato JSON requerido apoyándote en tu conocimiento sobre el tema.`;
 
-    // 3. Call Groq
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${GROQ_API_KEY}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'openai/gpt-oss-120b',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userMessage }
-            ],
-            temperature: 0.1,
-            response_format: { type: "json_object" }
-        })
+    const chatCompletion = await groqClient.chat.completions.create({
+        messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+        ],
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.1,
+        max_completion_tokens: 4000,
+        response_format: { type: 'json_object' }
     });
 
-    if (!groqResponse.ok) {
-        const errorData = await groqResponse.json();
-        throw new Error(errorData.error?.message || 'Failed to generate diagram from Groq');
-    }
-
-    const groqData = await groqResponse.json();
-    const contentStr = groqData.choices[0].message.content;
+    const contentStr = chatCompletion.choices[0]?.message?.content || '';
 
     try {
-        const flowchartData = JSON.parse(contentStr);
-        return flowchartData;
+        return JSON.parse(contentStr);
     } catch (e) {
         throw new Error('La IA no devolvió un formato JSON válido.');
     }
 }
 
+// --- expandNode ---
 export async function expandNode(parentNode, tone = 'Informativo', theme = 'Naturaleza') {
     if (!import.meta.env.VITE_GROQ_API_KEY) {
-        throw new Error("Missing VITE_GROQ_API_KEY in environment variables.");
+        throw new Error('Missing VITE_GROQ_API_KEY in environment variables.');
     }
-
-    const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
 
     const systemPrompt = `Eres un experto en expandir ramificaciones de diagramas interactivos.
 Tu objetivo es tomar un concepto específico (un nodo padre) y "profundizar" en él, generando 3 o 4 nuevos nodos hijos detallados que extiendan y expliquen ese concepto.
@@ -126,8 +109,8 @@ DEBES usar los siguientes "type" para clasificar visualmente los nuevos nodos hi
 - "risk" (riesgos asociados a esto)
 - "example" (ejemplos reales o casos)
 
-DEBES responder ÚNICAMENTE con un objeto JSON válido que contenga la propiedad "newNodes". 
-INYECCIÓN CRÍTICA: Debes asegurarte de que los IDs de los nuevos nodos sean ÚNICOS agregando un sufijo aleatorio largo, o mejor aún, usando el formato: "\${parentId}-child-1", "\${parentId}-child-2", etc.
+DEBES responder ÚNICAMENTE con un objeto JSON válido que contenga la propiedad "newNodes".
+INYECCIÓN CRÍTICA: Debes asegurarte de que los IDs de los nuevos nodos sean ÚNICOS usando el formato: "\${parentId}-child-1", "\${parentId}-child-2", etc.
 También debes incluir la propiedad "newEdges" conectando TODOS estos nuevos hijos de vuelta al "parentId" dado.
 
 Estructura EXACTA requerida:
@@ -146,7 +129,7 @@ Estructura EXACTA requerida:
 
 REGLAS ESTRICTAS:
 1. No incluyas markdown, saludos ni código en texto plano. Devuelve directamente UN SOLO JSON válido.
-2. NO incluyas posiciones ("position"). El motor de renderizado las calculará automticamente.`;
+2. NO incluyas posiciones ("position"). El motor de renderizado las calculará automáticamente.`;
 
     const userMessage = `Por favor, expande el siguiente nodo de mi diagrama.
 ID del nodo padre: "${parentNode.id}"
@@ -155,25 +138,25 @@ Contenido del nodo padre: "${parentNode.data.content}"
 
 Genera de 3 a 5 sub-nodos ricos en información relacionados estrictamente con este tema.`;
 
-    const chatCompletion = await groq.chat.completions.create({
+    const chatCompletion = await groqClient.chat.completions.create({
         messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
         ],
-        model: "llama-3.3-70b-versatile",
+        model: 'llama-3.3-70b-versatile',
         temperature: 0.8,
         max_completion_tokens: 4000,
-        response_format: { type: "json_object" }
+        response_format: { type: 'json_object' }
     });
 
-    const responseText = chatCompletion.choices[0]?.message?.content || "";
+    const responseText = chatCompletion.choices[0]?.message?.content || '';
 
     try {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         const jsonText = jsonMatch ? jsonMatch[0] : responseText;
         return JSON.parse(jsonText);
     } catch (error) {
-        console.error("Error formatting JSON from AI expansion:", error, "Raw output:", responseText);
-        throw new Error("Failed to expand node.");
+        console.error('Error formatting JSON from AI expansion:', error, 'Raw output:', responseText);
+        throw new Error('Failed to expand node.');
     }
 }

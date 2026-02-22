@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { applyNodeChanges, applyEdgeChanges, getNodesBounds, getViewportForBounds } from 'reactflow';
 import FloraCanvas from './components/FloraCanvas';
 import AddFloraModal from './components/AddFloraModal';
@@ -14,84 +14,74 @@ function App() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [isExpanding, setIsExpanding] = useState(false);
-  const [diagramType, setDiagramType] = useState('Diagrama de Flujo'); // Lifted State for Export naming
+  const [diagramType, setDiagramType] = useState('Diagrama de Flujo');
+
+  // Keep a ref to edges so async handlers always read the latest value
+  const edgesRef = useRef(edges);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   const onNodesChange = useCallback(
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    [setNodes]
+    []
   );
 
   const onEdgesChange = useCallback(
     (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    [setEdges]
+    []
   );
 
-  const handleDeepDive = async (nodeId, nodeData) => {
+  const handleDeepDive = useCallback(async (nodeId, nodeData) => {
     try {
-      // Set loading state on the specific node
-      setNodes(nds => nds.map(n => {
-        if (n.id === nodeId) {
-          n.data = { ...n.data, isExpanding: true };
-        }
-        return n;
-      }));
+      // Mark node as loading
+      setNodes(nds => nds.map(n =>
+        n.id === nodeId ? { ...n, data: { ...n.data, isExpanding: true } } : n
+      ));
       setIsExpanding(true);
 
       const expansionData = await expandNode({ id: nodeId, data: nodeData });
 
       if (expansionData.newNodes && expansionData.newEdges) {
-        // Map new nodes to include the deep dive function
         const mappedNewNodes = expansionData.newNodes.map(n => ({
           ...n,
           data: { ...n.data, onDeepDive: handleDeepDive, isExpanding: false }
         }));
 
+        // Read the current edges snapshot from the ref (avoids stale closure)
+        const currentEdges = edgesRef.current;
+
         setNodes(currentNodes => {
-          const currentEdges = edges;
           const updatedNodes = [...currentNodes, ...mappedNewNodes];
           const updatedEdges = [...currentEdges, ...expansionData.newEdges];
 
-          // Re-run layouting for the entire graph so it makes space for the new branches
           const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(updatedNodes, updatedEdges);
           setEdges(layoutedEdges);
 
-          // Remove the loading state from parent
-          return layoutedNodes.map(n => {
-            if (n.id === nodeId) {
-              n.data = { ...n.data, isExpanding: false };
-            }
-            return n;
-          });
+          return layoutedNodes.map(n =>
+            n.id === nodeId ? { ...n, data: { ...n.data, isExpanding: false } } : n
+          );
         });
       }
     } catch (error) {
-      console.error("Deep dive failed:", error);
+      console.error('Deep dive failed:', error);
       alert(error.message);
-      // Revert loading state
-      setNodes(nds => nds.map(n => {
-        if (n.id === nodeId) {
-          n.data = { ...n.data, isExpanding: false };
-        }
-        return n;
-      }));
+      setNodes(nds => nds.map(n =>
+        n.id === nodeId ? { ...n, data: { ...n.data, isExpanding: false } } : n
+      ));
     } finally {
       setIsExpanding(false);
     }
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Add entirely new flowchart to the canvas (merging with existing)
-  const handleAddFlowchart = (newNodes, newEdges) => {
+  const handleAddFlowchart = useCallback((newNodes, newEdges) => {
+    const currentEdges = edgesRef.current;
     const combinedNodes = [...nodes, ...newNodes];
-    const combinedEdges = [...edges, ...newEdges];
+    const combinedEdges = [...currentEdges, ...newEdges];
 
-    // Determine direction based on `diagramType`
-    let direction = 'TB';
-    if (diagramType === 'Diagrama de Secuencia') direction = 'LR';
-    else if (diagramType === 'Mapa Mental') direction = 'TB'; // Can adjust ranker later if needed
-
+    const direction = diagramType === 'Diagrama de Secuencia' ? 'LR' : 'TB';
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(combinedNodes, combinedEdges, direction);
 
-    // Map the deep dive function
     const finalizedNodes = layoutedNodes.map(n => ({
       ...n,
       data: { ...n.data, onDeepDive: handleDeepDive }
@@ -99,18 +89,21 @@ function App() {
 
     setNodes(finalizedNodes);
     setEdges(layoutedEdges);
-  };
+  }, [nodes, diagramType, handleDeepDive]);
 
-  // Export Canvas to HD Full-Size PNG Image
   const handleExport = useCallback(() => {
     const rfElement = document.querySelector('.react-flow__viewport');
     if (!rfElement) return;
 
-    // Calculate real size of entire graph
     const nodesBounds = getNodesBounds(nodes);
-    // Add a good amount of padding so it looks breathable
     const padding = 150;
-    const transform = getViewportForBounds(nodesBounds, nodesBounds.width + padding * 2, nodesBounds.height + padding * 2, 0.1, 2);
+    const transform = getViewportForBounds(
+      nodesBounds,
+      nodesBounds.width + padding * 2,
+      nodesBounds.height + padding * 2,
+      0.1,
+      2
+    );
 
     toPng(rfElement, {
       backgroundColor: '#030a05',
@@ -121,7 +114,7 @@ function App() {
         height: nodesBounds.height + padding * 2,
         transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
       },
-      pixelRatio: 2 // High Res
+      pixelRatio: 2
     })
       .then((dataUrl) => {
         const link = document.createElement('a');
@@ -131,7 +124,7 @@ function App() {
       })
       .catch((error) => {
         console.error('Error generating image:', error);
-        alert("Failed to export image. Make sure the graph is not excessively large.");
+        alert('Failed to export image. Make sure the graph is not excessively large.');
       });
   }, [nodes, diagramType]);
 
@@ -150,7 +143,7 @@ function App() {
         </Button>
 
         {nodes.length > 0 && (
-          <Button onClick={handleExport} style={{ backgroundColor: 'rgba(3, 10, 5, 0.9)', color: '#42f57e' }}>
+          <Button onClick={handleExport}>
             <Download size={20} /> Export PNG
           </Button>
         )}
