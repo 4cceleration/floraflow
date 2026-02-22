@@ -6,70 +6,196 @@ const groqClient = new Groq({
     dangerouslyAllowBrowser: true
 });
 
-// --- generateFlowchart ---
-export async function generateFlowchart(prompt, detailLevel, tone = 'Informativo', theme = 'Naturaleza', diagramType = 'Diagrama de Flujo') {
-    if (!import.meta.env.VITE_GROQ_API_KEY) {
-        throw new Error('API Key de Groq no configurada. Por favor, añade VITE_GROQ_API_KEY en el archivo .env.');
-    }
+// ─── Per-diagram system prompts ────────────────────────────────────────────
 
-    let nodeCountHint = '';
-    let descriptionHint = '';
+const PROMPTS = {
+    'Diagrama de Flujo': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en diagramas de flujo de procesos (Flowcharts).
+Genera un "${detailLevel}" diagrama de flujo con ${nodeCountHint} nodos.
 
-    if (detailLevel === 'Condensado') {
-        nodeCountHint = '3 a 5 nodos';
-        descriptionHint = 'un resumen muy conciso de 1 o 2 oraciones principales';
-    } else if (detailLevel === 'Estándar') {
-        nodeCountHint = '6 a 10 nodos';
-        descriptionHint = 'una explicación clara y directa de 2 o 3 oraciones por cada punto';
-    } else if (detailLevel === 'Extenso') {
-        nodeCountHint = '12 a 20 nodos';
-        descriptionHint = 'un análisis profundo y detallado paso a paso, con un texto explicativo largo en cada nodo';
-    }
+TOPOLOGÍA OBLIGATORIA (Diagrama de Flujo clásico):
+- PRIMER nodo: type "terminal", title "Inicio" (nodo oval de entrada)
+- ÚLTIMO nodo: type "terminal", title "Fin" (nodo oval de salida)
+- Nodos de proceso intermedios: type "flora" (rectángulos)
+- Nodos de decisión (preguntas Sí/No, condiciones): type "decision" (rombos)
+- Nodos de riesgo o advertencia: type "risk"
+- El flujo SIEMPRE termina convergiendo de vuelta hacia "Fin"
+- Los edges desde nodos "decision" deben tener label "Sí" o "No"
 
-    const systemPrompt = `Eres un experto en estructuración de diagramas de conocimiento visual.
-Tu objetivo es analizar un tema y generar un "${diagramType}" en formato JSON representable como un Grafo Dirigido.
-El nivel de detalle requerido es "${detailLevel}", lo que significa que DEBES generar entre ${nodeCountHint} y cada nodo debe tener ${descriptionHint} en su campo "content".
+TONO: "${tone}". TEMÁTICA: "${theme}".
+Cada nodo debe tener ${descriptionHint} en su campo "content".
 
-El TONO DE VOZ que debes usar en todo el contenido (títulos y descripciones) es: "${tone}". (Ej. Si es sarcástico, sé sarcástico; si es místico, usa analogías mágicas).
-La VIBRA/TEMÁTICA central de la narrativa debe ser: "${theme}". Adáptate a esta temática para dar ejemplos o comparaciones.
-
-ESTRUCTURA ARQUITECTÓNICA REQUERIDA ("${diagramType}"):
-- Si es "Diagrama de Flujo": Crea pasos secuenciales lógicos (Paso 1 -> Paso 2 -> Decisión -> A o B).
-- Si es "Mapa Conceptual": Crea nodos unidos por relaciones lógicas jerárquicas (Concepto General -> Subconceptos).
-- Si es "Árbol de Decisiones": Comienza con una pregunta raíz y plaga el diagrama de múltiples caminos paralelos basados en condiciones.
-- Si es "Mapa Mental": Un nodo central "raíz" del cual explotan múltiples temas radiales.
-- Si es "Diagrama de Secuencia": Orden cronológico estricto simulando etapas del tiempo o intercambios.
-
-DEBES estructurar el diagrama respetando esa topología.
-DEBES usar los siguientes "type" para clasificar visualmente los nodos:
-- "flora" (pasos normales o conceptos)
-- "decision" (paralelos, opciones, preguntas)
-- "risk" (riesgos, advertencias por mal manejo)
-- "example" (ejemplos reales, casos prácticos)
-
-DEBES responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura exacta:
+RESPONDE ÚNICAMENTE con JSON válido:
 {
   "nodes": [
-    {
-      "id": "1",
-      "type": "flora",
-      "data": { "title": "Concepto Central", "content": "Detalles..." }
-    }
+    { "id": "1", "type": "terminal", "data": { "title": "Inicio", "content": "" } },
+    { "id": "2", "type": "flora",    "data": { "title": "Proceso X", "content": "..." } },
+    { "id": "3", "type": "decision", "data": { "title": "¿Condición?", "content": "..." } },
+    { "id": "n", "type": "terminal", "data": { "title": "Fin", "content": "" } }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2", "animated": false },
+    { "id": "e3-4", "source": "3", "target": "4", "label": "Sí", "animated": true },
+    { "id": "e3-5", "source": "3", "target": "5", "label": "No", "animated": false }
+  ]
+}
+REGLAS: Sin markdown. Sin posiciones. IDs de texto. Solo JSON.`,
+
+    'Mapa Mental': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en Mapas Mentales.
+Genera un mapa mental con ${nodeCountHint} nodos totales.
+
+TOPOLOGÍA OBLIGATORIA (Mapa Mental):
+- EXACTAMENTE UN nodo raíz central: type "flora", id "1", isRoot: true — este es el tema principal
+- De la raíz deben salir DIRECTAMENTE de 4 a 7 ramas principales (hijos directos): type "flora"
+- Cada rama principal puede tener 1 o 2 sub-ramas (nietos): type "example"
+- Cada rama y sub-rama conecta directamente al nivel anterior
+- La estructura es RADIAL: raíz en el centro, ramas en todas direcciones
+- NO encadenes más de 3 niveles de profundidad (raíz → rama → sub-rama)
+
+TONO: "${tone}". TEMÁTICA: "${theme}".
+Cada nodo debe tener ${descriptionHint} en su campo "content".
+
+RESPONDE ÚNICAMENTE con JSON válido:
+{
+  "nodes": [
+    { "id": "1", "type": "flora",   "data": { "title": "Tema Central", "content": "..." } },
+    { "id": "2", "type": "flora",   "data": { "title": "Rama 1", "content": "..." } },
+    { "id": "3", "type": "flora",   "data": { "title": "Rama 2", "content": "..." } },
+    { "id": "4", "type": "example", "data": { "title": "Sub-rama 1.1", "content": "..." } }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2", "animated": false },
+    { "id": "e1-3", "source": "1", "target": "3", "animated": false },
+    { "id": "e2-4", "source": "2", "target": "4", "animated": false }
+  ]
+}
+REGLAS: Sin markdown. Sin posiciones. Solo JSON.`,
+
+    'Mapa Conceptual': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en Mapas Conceptuales jerárquicos.
+Genera un mapa conceptual con ${nodeCountHint} nodos.
+
+TOPOLOGÍA OBLIGATORIA (Mapa Conceptual):
+- EXACTAMENTE UN nodo raíz en la cima: type "flora", id "1" — el concepto más general/abstracto
+- Diseño en árbol jerárquico: raíz → conceptos principales → subconceptos → detalles
+- TODOS los nodos son type "flora" (los conceptos son iguales entre sí, solo difieren en nivel)
+- Los edges DEBEN tener un "label" corto que indique la relación (ej: "es parte de", "incluye", "se divide en", "sirve para")
+- Máximo 4 niveles de profundidad
+- Un concepto puede tener múltiples hijos pero pocos padres (árbol, no red)
+
+TONO: "${tone}". TEMÁTICA: "${theme}".
+Cada nodo debe tener ${descriptionHint} en su campo "content".
+
+RESPONDE ÚNICAMENTE con JSON válido:
+{
+  "nodes": [
+    { "id": "1", "type": "flora", "data": { "title": "Concepto Principal", "content": "..." } },
+    { "id": "2", "type": "flora", "data": { "title": "Subconcepto A", "content": "..." } },
+    { "id": "3", "type": "flora", "data": { "title": "Subconcepto B", "content": "..." } }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2", "label": "incluye", "animated": false },
+    { "id": "e1-3", "source": "1", "target": "3", "label": "se divide en", "animated": false }
+  ]
+}
+REGLAS: Sin markdown. Sin posiciones. Solo JSON. TODOS los edges con label de relación.`,
+
+    'Árbol de Decisiones': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en Árboles de Decisión.
+Genera un árbol de decisión con ${nodeCountHint} nodos.
+
+TOPOLOGÍA OBLIGATORIA (Árbol de Decisiones):
+- EXACTAMENTE UN nodo raíz a la izquierda: type "flora" — el punto de decisión inicial
+- Nodos de decisión intermedios (puntos de bifurcación, opciones): type "decision"
+- Nodos de resultado/hoja (al final de cada rama): type "example"
+- La estructura es un ÁRBOL que se expande de izquierda a derecha (LR)
+- Cada nodo intermediario ("decision") tiene exactamente 2 o 3 edges de salida
+- Los edges DEBEN tener un "label" corto indicando la opción (ej: "Opción A", "Alta prob.", "Éxito", "Falla")
+- Los nodos "example" son hojas (no tienen edges de salida)
+
+TONO: "${tone}". TEMÁTICA: "${theme}".
+Cada nodo debe tener ${descriptionHint} en su campo "content".
+
+RESPONDE ÚNICAMENTE con JSON válido:
+{
+  "nodes": [
+    { "id": "1", "type": "flora",   "data": { "title": "Decisión Raíz", "content": "..." } },
+    { "id": "2", "type": "decision","data": { "title": "Opción A", "content": "..." } },
+    { "id": "3", "type": "decision","data": { "title": "Opción B", "content": "..." } },
+    { "id": "4", "type": "example", "data": { "title": "Resultado 1", "content": "..." } }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2", "label": "Opción A", "animated": false },
+    { "id": "e1-3", "source": "1", "target": "3", "label": "Opción B", "animated": false },
+    { "id": "e2-4", "source": "2", "target": "4", "label": "Alta prob.", "animated": false }
+  ]
+}
+REGLAS: Sin markdown. Sin posiciones. Solo JSON. Todos los edges del árbol con label.`,
+
+    'Diagrama de Secuencia': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en Diagramas de Secuencia.
+Genera un diagrama de secuencia con ${nodeCountHint} nodos.
+
+TOPOLOGÍA OBLIGATORIA (Diagrama de Secuencia):
+- Representa una LÍNEA DE TIEMPO de eventos o intercambios en orden cronológico estricto
+- Todos los nodos son type "flora" (pasos cronológicos)
+- EXCEPCIÓN: usa type "decision" para puntos de espera o condición temporal
+- El flujo es estrictamente LINEAL o casi lineal (pocos o ningún branch)
+- Los nodos representan eventos/mensajes/acciones en el tiempo
+- La dirección es de arriba hacia abajo (TB) como una línea de tiempo
+
+TONO: "${tone}". TEMÁTICA: "${theme}".
+Cada nodo debe tener ${descriptionHint} en su campo "content".
+
+RESPONDE ÚNICAMENTE con JSON válido:
+{
+  "nodes": [
+    { "id": "1", "type": "flora", "data": { "title": "Evento 1", "content": "..." } },
+    { "id": "2", "type": "flora", "data": { "title": "Evento 2", "content": "..." } }
   ],
   "edges": [
     { "id": "e1-2", "source": "1", "target": "2", "animated": true }
   ]
 }
+REGLAS: Sin markdown. Sin posiciones. Solo JSON.`,
+};
 
-REGLAS ESTRICTAS:
-1. No incluyas markdown, saludos ni código en texto plano. Devuelve directamente UN SOLO JSON válido.
-2. NO incluyas posiciones ("position": { "x": ..., "y": ... }) en los nodos. El motor de renderizado calculará esto automáticamente.
-3. Los IDs de los nodos deben ser cadenas de texto ("1", "2").
-4. Genera múltiples "edges" que se ramifiquen y se vuelvan a unir si es necesario formando un ecosistema complejo.`;
+// Default generic prompt for unknown types
+const DEFAULT_PROMPT = (diagramType, detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en diagramas de conocimiento visual.
+Genera un "${diagramType}" con ${nodeCountHint} nodos.
+TONO: "${tone}". TEMÁTICA: "${theme}".
+Cada nodo debe tener ${descriptionHint} en su campo "content".
+Usa types: "flora", "decision", "risk", "example".
+RESPONDE ÚNICAMENTE con JSON válido: { "nodes": [...], "edges": [...] }
+REGLAS: Sin markdown. Sin posiciones. Solo JSON.`;
 
-    const userMessage = `Tema solicitado para el diagrama: ${prompt}
+// ─── generateFlowchart ──────────────────────────────────────────────────────
 
-Genera un ecosistema de información complejo (mecanismos, paralelos, ejemplos, riesgos) en el formato JSON requerido apoyándote en tu conocimiento sobre el tema.`;
+export async function generateFlowchart(prompt, detailLevel, tone = 'Informativo', theme = 'Naturaleza', diagramType = 'Diagrama de Flujo') {
+    if (!import.meta.env.VITE_GROQ_API_KEY) {
+        throw new Error('API Key de Groq no configurada. Por favor, añade VITE_GROQ_API_KEY en el archivo .env.');
+    }
+
+    let nodeCountHint, descriptionHint;
+    if (detailLevel === 'Condensado') {
+        nodeCountHint = '4 a 6 nodos';
+        descriptionHint = 'un resumen conciso de 1 a 2 oraciones';
+    } else if (detailLevel === 'Estándar') {
+        nodeCountHint = '7 a 12 nodos';
+        descriptionHint = 'una explicación clara de 2 a 3 oraciones';
+    } else {
+        nodeCountHint = '13 a 20 nodos';
+        descriptionHint = 'un análisis detallado paso a paso';
+    }
+
+    const promptFn = PROMPTS[diagramType];
+    const systemPrompt = promptFn
+        ? promptFn(detailLevel, nodeCountHint, descriptionHint, tone, theme)
+        : DEFAULT_PROMPT(diagramType, detailLevel, nodeCountHint, descriptionHint, tone, theme);
+
+    const userMessage = `Tema para el diagrama: "${prompt}"\n\nGenera el ${diagramType} completo sobre este tema aplicando todo el conocimiento que tengas sobre él.`;
 
     const chatCompletion = await groqClient.chat.completions.create({
         messages: [
@@ -77,8 +203,8 @@ Genera un ecosistema de información complejo (mecanismos, paralelos, ejemplos, 
             { role: 'user', content: userMessage }
         ],
         model: 'llama-3.3-70b-versatile',
-        temperature: 0.1,
-        max_completion_tokens: 4000,
+        temperature: 0.15,
+        max_completion_tokens: 4096,
         response_format: { type: 'json_object' }
     });
 
@@ -91,52 +217,44 @@ Genera un ecosistema de información complejo (mecanismos, paralelos, ejemplos, 
     }
 }
 
-// --- expandNode ---
+// ─── expandNode ────────────────────────────────────────────────────────────
+
 export async function expandNode(parentNode, tone = 'Informativo', theme = 'Naturaleza') {
     if (!import.meta.env.VITE_GROQ_API_KEY) {
         throw new Error('Missing VITE_GROQ_API_KEY in environment variables.');
     }
 
-    const systemPrompt = `Eres un experto en expandir ramificaciones de diagramas interactivos.
-Tu objetivo es tomar un concepto específico (un nodo padre) y "profundizar" en él, generando 3 o 4 nuevos nodos hijos detallados que extiendan y expliquen ese concepto.
+    const systemPrompt = `Eres un experto en expandir nodos de diagramas interactivos.
+Toma el nodo padre dado y genera de 3 a 5 nodos hijos que profundicen en su concepto.
+Hereda el mismo tipo de diagrama y estilo del padre.
 
-El TONO DE VOZ que debes usar en todo el contenido es: "${tone}".
-La VIBRA/TEMÁTICA central de la narrativa debe ser: "${theme}".
+DEBES usar los siguientes "type":
+- "flora" (sub-conceptos o pasos)
+- "decision" (opciones o bifurcaciones)
+- "risk" (riesgos asociados)
+- "example" (ejemplos reales)
+- "terminal" (solo si el padre es un Diagrama de Flujo y el hijo es un punto final)
 
-DEBES usar los siguientes "type" para clasificar visualmente los nuevos nodos hijos:
-- "flora" (pasos normales o sub-conceptos)
-- "decision" (paralelos, opciones, preguntas)
-- "risk" (riesgos asociados a esto)
-- "example" (ejemplos reales o casos)
+Los IDs de los nuevos nodos deben seguir el formato: "\${parentId}-child-1", "\${parentId}-child-2", etc.
+Incluye "newEdges" conectando cada hijo al padre.
 
-DEBES responder ÚNICAMENTE con un objeto JSON válido que contenga la propiedad "newNodes".
-INYECCIÓN CRÍTICA: Debes asegurarte de que los IDs de los nuevos nodos sean ÚNICOS usando el formato: "\${parentId}-child-1", "\${parentId}-child-2", etc.
-También debes incluir la propiedad "newEdges" conectando TODOS estos nuevos hijos de vuelta al "parentId" dado.
+TONO: "${tone}". TEMÁTICA: "${theme}".
 
-Estructura EXACTA requerida:
+RESPONDE ÚNICAMENTE con JSON:
 {
   "newNodes": [
-    {
-      "id": "parentNodeId-child-1",
-      "type": "flora",
-      "data": { "title": "Sub-concepto 1", "content": "Detalles profundos..." }
-    }
+    { "id": "parentId-child-1", "type": "flora", "data": { "title": "...", "content": "..." } }
   ],
   "newEdges": [
-    { "id": "eParent-child-1", "source": "parentNodeId", "target": "parentNodeId-child-1", "animated": true }
+    { "id": "eParent-child-1", "source": "parentId", "target": "parentId-child-1", "animated": true }
   ]
-}
+}`;
 
-REGLAS ESTRICTAS:
-1. No incluyas markdown, saludos ni código en texto plano. Devuelve directamente UN SOLO JSON válido.
-2. NO incluyas posiciones ("position"). El motor de renderizado las calculará automáticamente.`;
-
-    const userMessage = `Por favor, expande el siguiente nodo de mi diagrama.
-ID del nodo padre: "${parentNode.id}"
-Título del nodo padre: "${parentNode.data.title}"
-Contenido del nodo padre: "${parentNode.data.content}"
-
-Genera de 3 a 5 sub-nodos ricos en información relacionados estrictamente con este tema.`;
+    const userMessage = `Expande el siguiente nodo:
+ID: "${parentNode.id}"
+Título: "${parentNode.data.title}"
+Contenido: "${parentNode.data.content}"
+Tipo de diagrama: "${parentNode.data.diagramType ?? 'Diagrama de Flujo'}"`;
 
     const chatCompletion = await groqClient.chat.completions.create({
         messages: [
@@ -153,10 +271,9 @@ Genera de 3 a 5 sub-nodos ricos en información relacionados estrictamente con e
 
     try {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        const jsonText = jsonMatch ? jsonMatch[0] : responseText;
-        return JSON.parse(jsonText);
+        return JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
     } catch (error) {
-        console.error('Error formatting JSON from AI expansion:', error, 'Raw output:', responseText);
+        console.error('Error parsing expansion JSON:', error);
         throw new Error('Failed to expand node.');
     }
 }

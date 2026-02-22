@@ -43,9 +43,15 @@ function App() {
       const expansionData = await expandNode({ id: nodeId, data: nodeData });
 
       if (expansionData.newNodes && expansionData.newEdges) {
+        // Inherit diagramType from the parent node so visual identity stays locked
         const mappedNewNodes = expansionData.newNodes.map(n => ({
           ...n,
-          data: { ...n.data, onDeepDive: handleDeepDive, isExpanding: false }
+          data: {
+            ...n.data,
+            onDeepDive: handleDeepDive,
+            isExpanding: false,
+            diagramType: nodeData.diagramType ?? 'Diagrama de Flujo'
+          }
         }));
 
         // Read the current edges snapshot from the ref (avoids stale closure)
@@ -79,7 +85,8 @@ function App() {
     const combinedNodes = [...nodes, ...newNodes];
     const combinedEdges = [...currentEdges, ...newEdges];
 
-    const direction = diagramType === 'Diagrama de Secuencia' ? 'LR' : 'TB';
+    const VERTICAL_DIAGRAMS = ['Diagrama de Flujo', 'Diagrama de Secuencia', 'Mapa Conceptual'];
+    const direction = VERTICAL_DIAGRAMS.includes(diagramType) ? 'TB' : 'LR';
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(combinedNodes, combinedEdges, direction);
 
     const finalizedNodes = layoutedNodes.map(n => ({

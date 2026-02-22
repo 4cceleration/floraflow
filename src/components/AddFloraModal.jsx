@@ -34,7 +34,17 @@ export default function AddFloraModal({ isOpen, onClose, onAddFlowchart, diagram
             if (data && data.nodes && data.edges) {
                 const uid = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
-                const newNodes = data.nodes.map(n => ({ ...n, id: `${uid}-${n.id}` }));
+                // Stamp diagramType into every node's data so FloraNode can render it distinctly
+                const newNodes = data.nodes.map((n, idx) => ({
+                    ...n,
+                    id: `${uid}-${n.id}`,
+                    data: {
+                        ...n.data,
+                        diagramType,
+                        isRoot: idx === 0  // first node is treated as root (for Mapa Mental)
+                    }
+                }));
+
                 const newEdges = data.edges.map(e => ({
                     ...e,
                     id: `${uid}-${e.id}`,

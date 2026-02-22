@@ -376,3 +376,428 @@ button.magical-button:disabled {
     stroke-dashoffset: 10;
   }
 }
+
+/* ============================================================
+   DIAGRAM-TYPE VISUAL IDENTITIES
+   Each .dt-* class overrides the base .flora-node completely.
+   ============================================================ */
+
+/* Shared title utility */
+.node-title {
+  flex: 1;
+  overflow-wrap: break-word;
+}
+
+/* ── 1. DIAGRAMA DE FLUJO (default — green, keep as-is) ────── */
+/* No overrides needed. Base .flora-node styles apply. */
+
+/* ── 2. MAPA CONCEPTUAL — sky blue, large rounded corners ──── */
+.flora-node.dt-conceptual {
+  background: rgba(8, 20, 38, 0.92);
+  border: 2px solid rgba(56, 189, 248, 0.45);
+  border-radius: 24px;
+  box-shadow:
+    0 0 18px rgba(56, 189, 248, 0.1),
+    inset 0 0 20px rgba(56, 189, 248, 0.04);
+  outline: 1px solid rgba(56, 189, 248, 0.15);
+  outline-offset: 3px;
+}
+
+.flora-node.dt-conceptual:hover {
+  border-color: rgba(56, 189, 248, 0.75);
+  box-shadow:
+    0 0 30px rgba(56, 189, 248, 0.25),
+    0 0 60px rgba(56, 189, 248, 0.08);
+  transform: translateY(-2px);
+}
+
+.flora-node.dt-conceptual .flora-node-header {
+  color: #7dd3fc;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.flora-node.dt-conceptual .flora-node-content {
+  border-top-color: rgba(56, 189, 248, 0.2);
+  color: #bae6fd;
+}
+
+.flora-node.dt-conceptual .flora-node-toggle {
+  color: #38bdf8;
+}
+
+.flora-node.dt-conceptual .deep-dive-btn {
+  background-color: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
+}
+
+.flora-node.dt-conceptual .deep-dive-btn:hover:not(:disabled) {
+  background-color: #38bdf8;
+  color: #000;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+/* ── 3. MAPA MENTAL — violet, pill shape, glowing root node ── */
+.flora-node.dt-mental {
+  background: rgba(30, 10, 50, 0.9);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 999px;
+  padding: 14px 28px;
+  min-width: 200px;
+  width: auto;
+  max-width: 320px;
+  box-shadow:
+    0 0 20px rgba(167, 139, 250, 0.12),
+    inset 0 0 15px rgba(167, 139, 250, 0.04);
+  text-align: center;
+}
+
+.flora-node.dt-mental:hover {
+  border-color: rgba(167, 139, 250, 0.75);
+  box-shadow:
+    0 0 35px rgba(167, 139, 250, 0.3),
+    0 0 70px rgba(167, 139, 250, 0.1);
+  transform: scale(1.03);
+}
+
+.flora-node.dt-mental .flora-node-header {
+  color: #c4b5fd;
+  text-shadow: 0 0 12px rgba(167, 139, 250, 0.6);
+  justify-content: center;
+  gap: 8px;
+}
+
+.flora-node.dt-mental .flora-node-content {
+  border-top-color: rgba(167, 139, 250, 0.2);
+  color: #ddd6fe;
+  text-align: left;
+}
+
+.flora-node.dt-mental .flora-node-toggle {
+  color: #a78bfa;
+}
+
+.flora-node.dt-mental .deep-dive-btn {
+  background-color: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #c4b5fd;
+  border-radius: 999px;
+}
+
+.flora-node.dt-mental .deep-dive-btn:hover:not(:disabled) {
+  background-color: #a78bfa;
+  color: #1e0a32;
+  box-shadow: 0 0 18px rgba(167, 139, 250, 0.5);
+}
+
+/* Root node in Mapa Mental — larger, circular, extra glow */
+.flora-node.dt-mental.is-root {
+  border-width: 2px;
+  border-color: rgba(196, 181, 253, 0.7);
+  background: rgba(60, 20, 100, 0.95);
+  padding: 20px 40px;
+  box-shadow:
+    0 0 40px rgba(167, 139, 250, 0.35),
+    0 0 80px rgba(167, 139, 250, 0.15),
+    inset 0 0 30px rgba(167, 139, 250, 0.08);
+}
+
+.flora-node.dt-mental.is-root .flora-node-header {
+  font-size: 18px;
+  color: #ede9fe;
+  text-shadow: 0 0 20px rgba(167, 139, 250, 0.8);
+}
+
+/* ── 4. ÁRBOL DE DECISIONES — amber, diamond for decisions ─── */
+.flora-node.dt-decisiones {
+  background: rgba(28, 18, 5, 0.92);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  box-shadow:
+    0 0 15px rgba(245, 158, 11, 0.08),
+    inset 0 0 15px rgba(245, 158, 11, 0.03);
+}
+
+.flora-node.dt-decisiones:hover {
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
+  transform: translateY(-2px);
+}
+
+.flora-node.dt-decisiones .flora-node-header {
+  color: #fcd34d;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.flora-node.dt-decisiones .flora-node-content {
+  border-top-color: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+
+.flora-node.dt-decisiones .flora-node-toggle {
+  color: #f59e0b;
+}
+
+.flora-node.dt-decisiones .deep-dive-btn {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+}
+
+.flora-node.dt-decisiones .deep-dive-btn:hover:not(:disabled) {
+  background-color: #f59e0b;
+  color: #1c1205;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+/* Decision-type nodes in an Árbol become diamond shapes */
+.flora-node.dt-decisiones.type-decision {
+  transform: rotate(45deg);
+  border-radius: 12px;
+  border-color: rgba(251, 191, 36, 0.65);
+  box-shadow:
+    0 0 20px rgba(251, 191, 36, 0.2),
+    inset 0 0 20px rgba(251, 191, 36, 0.06);
+}
+
+.flora-node.dt-decisiones.type-decision .flora-node-header,
+.flora-node.dt-decisiones.type-decision .flora-node-content {
+  transform: rotate(-45deg);
+}
+
+.flora-node.dt-decisiones.type-decision:hover {
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.35);
+}
+
+/* ── 5. DIAGRAMA DE SECUENCIA — cyan, left accent bar ──────── */
+.flora-node.dt-secuencia {
+  background: rgba(5, 20, 28, 0.92);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-left: 4px solid rgba(34, 211, 238, 0.8);
+  border-radius: 6px;
+  box-shadow:
+    0 0 15px rgba(34, 211, 238, 0.08),
+    inset 0 0 12px rgba(34, 211, 238, 0.03);
+}
+
+.flora-node.dt-secuencia:hover {
+  border-left-color: #22d3ee;
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: 0 0 25px rgba(34, 211, 238, 0.2);
+  transform: translateX(2px);
+}
+
+.flora-node.dt-secuencia .flora-node-header {
+  color: #67e8f9;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+}
+
+.flora-node.dt-secuencia .flora-node-content {
+  border-top-color: rgba(34, 211, 238, 0.2);
+  color: #a5f3fc;
+}
+
+.flora-node.dt-secuencia .flora-node-toggle {
+  color: #22d3ee;
+}
+
+.flora-node.dt-secuencia .deep-dive-btn {
+  background-color: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: #67e8f9;
+}
+
+.flora-node.dt-secuencia .deep-dive-btn:hover:not(:disabled) {
+  background-color: #22d3ee;
+  color: #05141c;
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+}
+
+/* Sequence step badge (▶) */
+.seq-badge {
+  font-size: 10px;
+  color: #22d3ee;
+  margin-right: 6px;
+  opacity: 0.7;
+}
+
+/* ── Diagram-type aware edge colors ────────────────────────── */
+/* Edges inherit the canvas default (green). Specific overrides
+   are applied via data-diagram attribute on the SVG path when
+   ReactFlow supports it — for now, animated edges use theme color */
+
+/* ============================================================
+   SHAPE SYSTEM — overrides geometry based on node role
+   ============================================================ */
+
+/* ── shape-terminal: Oval/pill — Flowchart Start & End ─────── */
+.flora-node.shape-terminal {
+  border-radius: 999px !important;
+  width: 160px !important;
+  min-height: 56px !important;
+  padding: 12px 24px !important;
+  justify-content: center;
+  background: rgba(10, 60, 20, 0.95) !important;
+  border-color: rgba(66, 245, 126, 0.7) !important;
+  box-shadow: 0 0 20px rgba(66, 245, 126, 0.25) !important;
+}
+
+.flora-node.shape-terminal .flora-node-header {
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── shape-diamond: Decision diamond — Flowchart ───────────── */
+.flora-node.shape-diamond {
+  width: 160px !important;
+  min-height: 160px !important;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%) !important;
+  border-radius: 0 !important;
+  background: rgba(20, 10, 40, 0.95) !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 36px 16px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: 3px solid rgba(167, 139, 250, 0.6) !important;
+  outline-offset: -6px;
+}
+
+.flora-node.shape-diamond .flora-node-header {
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #c4b5fd;
+  text-shadow: 0 0 10px rgba(167, 139, 250, 0.7);
+}
+
+.flora-node.shape-diamond:hover {
+  outline-color: rgba(196, 181, 253, 0.9) !important;
+  transform: scale(1.05) !important;
+  filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.5));
+}
+
+/* ── shape-circle: Chance node — Árbol de Decisiones ──────── */
+.flora-node.shape-circle {
+  width: 120px !important;
+  height: 120px !important;
+  min-height: 120px !important;
+  border-radius: 50% !important;
+  padding: 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 58, 138, 0.9) !important;
+  border: 2px solid rgba(96, 165, 250, 0.6) !important;
+  box-shadow: 0 0 20px rgba(96, 165, 250, 0.2) !important;
+}
+
+.flora-node.shape-circle .flora-node-header {
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  color: #bfdbfe;
+  text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+}
+
+.flora-node.shape-circle:hover {
+  border-color: rgba(147, 197, 253, 0.9) !important;
+  box-shadow: 0 0 30px rgba(96, 165, 250, 0.4) !important;
+  transform: scale(1.08) !important;
+}
+
+/* ── shape-outcome: Result leaf — Árbol de Decisiones ─────── */
+.flora-node.shape-outcome {
+  border-radius: 12px !important;
+  background: rgba(60, 20, 20, 0.92) !important;
+  border: 1px solid rgba(252, 165, 165, 0.5) !important;
+  box-shadow: 0 0 15px rgba(252, 165, 165, 0.1) !important;
+  width: 200px !important;
+}
+
+.flora-node.shape-outcome .flora-node-header {
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.flora-node.shape-outcome:hover {
+  border-color: rgba(252, 165, 165, 0.8) !important;
+  box-shadow: 0 0 25px rgba(252, 165, 165, 0.25) !important;
+}
+
+/* ── shape-pill: Branch node — Mapa Mental ─────────────────── */
+.flora-node.shape-pill {
+  border-radius: 999px !important;
+  width: auto !important;
+  min-width: 160px !important;
+  max-width: 280px !important;
+  padding: 12px 28px !important;
+  text-align: center;
+}
+
+.flora-node.shape-pill .flora-node-header {
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* ── shape-root: Central node — Mapa Mental ────────────────── */
+.flora-node.shape-root {
+  border-radius: 999px !important;
+  width: auto !important;
+  min-width: 200px !important;
+  max-width: 320px !important;
+  padding: 20px 40px !important;
+  text-align: center;
+  border-width: 2px !important;
+  border-color: rgba(196, 181, 253, 0.8) !important;
+  background: rgba(60, 20, 100, 0.95) !important;
+  box-shadow:
+    0 0 40px rgba(167, 139, 250, 0.4),
+    0 0 80px rgba(167, 139, 250, 0.2) !important;
+}
+
+.flora-node.shape-root .flora-node-header {
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ede9fe;
+  text-shadow: 0 0 20px rgba(167, 139, 250, 0.9);
+}
+
+/* ── shape-concept: Standard concept — Mapa Conceptual ─────── */
+.flora-node.shape-concept {
+  border-radius: 16px !important;
+  background: rgba(8, 30, 70, 0.92) !important;
+  border: 2px solid rgba(56, 189, 248, 0.4) !important;
+}
+
+.flora-node.shape-concept .flora-node-header {
+  color: #7dd3fc;
+  font-size: 15px;
+}
+
+/* ── shape-concept-root: Root — Mapa Conceptual ────────────── */
+.flora-node.shape-concept-root {
+  border-radius: 12px !important;
+  background: rgba(30, 64, 175, 0.95) !important;
+  border: 3px solid rgba(96, 165, 250, 0.8) !important;
+  box-shadow:
+    0 0 30px rgba(56, 189, 248, 0.3),
+    0 0 60px rgba(56, 189, 248, 0.1) !important;
+  width: 800px !important;
+  text-align: center;
+}
+
+.flora-node.shape-concept-root .flora-node-header {
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 15px rgba(147, 197, 253, 0.7);
+  letter-spacing: 0.5px;
+}
