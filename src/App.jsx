@@ -2,39 +2,116 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { applyNodeChanges, applyEdgeChanges, getNodesBounds, getViewportForBounds } from 'reactflow';
 import FloraCanvas from './components/FloraCanvas';
 import AddFloraModal from './components/AddFloraModal';
+import PresentationMode from './components/PresentationMode';
 import Button from './components/Button';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, Trash2, Presentation, Undo2, Redo2 } from 'lucide-react';
 import { expandNode } from './services/aiService';
 import { getLayoutedElements } from './utils/layoutUtils';
 import { toPng } from 'html-to-image';
 import './index.css';
 
+const MAX_HISTORY = 60;
+
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPresentationOpen, setIsPresentationOpen] = useState(false);
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [isExpanding, setIsExpanding] = useState(false);
   const [diagramType, setDiagramType] = useState('Diagrama de Flujo');
 
-  // Keep a ref to edges so async handlers always read the latest value
+  // ── Edges ref for stale-closure safety ───────────────────
   const edgesRef = useRef(edges);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
+
+  // ── Undo / Redo history stack ─────────────────────────────
+  const historyRef = useRef([{ nodes: [], edges: [] }]);
+  const historyIndexRef = useRef(0);
+
+  const pushHistory = useCallback((n, e) => {
+    const sliced = historyRef.current.slice(0, historyIndexRef.current + 1);
+    sliced.push({ nodes: n, edges: e });
+    if (sliced.length > MAX_HISTORY) sliced.shift();
+    historyRef.current = sliced;
+    historyIndexRef.current = sliced.length - 1;
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const { nodes: n, edges: e } = historyRef.current[historyIndexRef.current];
+      setNodes(n);
+      setEdges(e);
+    }
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const { nodes: n, edges: e } = historyRef.current[historyIndexRef.current];
+      setNodes(n);
+      setEdges(e);
+    }
+  }, []);
+
+  // ── Global keyboard shortcuts ─────────────────────────────
   useEffect(() => {
-    edgesRef.current = edges;
-  }, [edges]);
+    const onKey = (e) => {
+      // Don't intercept when user is typing in an input/textarea
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleUndo(); }
+      if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault(); handleRedo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleUndo, handleRedo]);
 
+  // ── ReactFlow change handlers ─────────────────────────────
   const onNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []
   );
-
   const onEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []
   );
 
+  // ── Delete node ───────────────────────────────────────────
+  const handleDeleteNode = useCallback((nodeId) => {
+    setNodes(nds => {
+      const next = nds.filter(n => n.id !== nodeId);
+      setEdges(eds => {
+        const nextE = eds.filter(e => e.source !== nodeId && e.target !== nodeId);
+        pushHistory(next, nextE);
+        return nextE;
+      });
+      return next;
+    });
+  }, [pushHistory]);
+
+  // ── Update node data ──────────────────────────────────────
+  const handleUpdateNode = useCallback((nodeId, newData) => {
+    setNodes(nds => {
+      const next = nds.map(n =>
+        n.id === nodeId ? { ...n, data: { ...n.data, ...newData } } : n
+      );
+      pushHistory(next, edgesRef.current);
+      return next;
+    });
+  }, [pushHistory]);
+
+  // ── Clear canvas ──────────────────────────────────────────
+  const handleClearCanvas = useCallback(() => {
+    if (nodes.length === 0) return;
+    if (!window.confirm('¿Borrar todo el canvas? Esta acción se puede deshacer con Ctrl+Z.')) return;
+    pushHistory(nodes, edgesRef.current);
+    setNodes([]);
+    setEdges([]);
+  }, [nodes, pushHistory]);
+
+  // ── Deep Dive ─────────────────────────────────────────────
   const handleDeepDive = useCallback(async (nodeId, nodeData) => {
     try {
-      // Mark node as loading
       setNodes(nds => nds.map(n =>
         n.id === nodeId ? { ...n, data: { ...n.data, isExpanding: true } } : n
       ));
@@ -43,28 +120,27 @@ function App() {
       const expansionData = await expandNode({ id: nodeId, data: nodeData });
 
       if (expansionData.newNodes && expansionData.newEdges) {
-        // Inherit diagramType from the parent node so visual identity stays locked
+        const currentEdges = edgesRef.current;
+
         const mappedNewNodes = expansionData.newNodes.map(n => ({
           ...n,
           data: {
             ...n.data,
             onDeepDive: handleDeepDive,
+            onDeleteNode: handleDeleteNode,
+            onUpdateNode: handleUpdateNode,
             isExpanding: false,
             diagramType: nodeData.diagramType ?? 'Diagrama de Flujo'
           }
         }));
 
-        // Read the current edges snapshot from the ref (avoids stale closure)
-        const currentEdges = edgesRef.current;
-
         setNodes(currentNodes => {
           const updatedNodes = [...currentNodes, ...mappedNewNodes];
           const updatedEdges = [...currentEdges, ...expansionData.newEdges];
-
-          const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(updatedNodes, updatedEdges);
-          setEdges(layoutedEdges);
-
-          return layoutedNodes.map(n =>
+          const { nodes: lN, edges: lE } = getLayoutedElements(updatedNodes, updatedEdges);
+          setEdges(lE);
+          pushHistory(lN, lE);
+          return lN.map(n =>
             n.id === nodeId ? { ...n, data: { ...n.data, isExpanding: false } } : n
           );
         });
@@ -78,26 +154,34 @@ function App() {
     } finally {
       setIsExpanding(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [handleDeleteNode, handleUpdateNode, pushHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Add flowchart from modal ──────────────────────────────
   const handleAddFlowchart = useCallback((newNodes, newEdges) => {
     const currentEdges = edgesRef.current;
     const combinedNodes = [...nodes, ...newNodes];
     const combinedEdges = [...currentEdges, ...newEdges];
 
-    const VERTICAL_DIAGRAMS = ['Diagrama de Flujo', 'Diagrama de Secuencia', 'Mapa Conceptual'];
-    const direction = VERTICAL_DIAGRAMS.includes(diagramType) ? 'TB' : 'LR';
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(combinedNodes, combinedEdges, direction);
+    const VERTICAL = ['Diagrama de Flujo', 'Diagrama de Secuencia', 'Mapa Conceptual'];
+    const direction = VERTICAL.includes(diagramType) ? 'TB' : 'LR';
+    const { nodes: lN, edges: lE } = getLayoutedElements(combinedNodes, combinedEdges, direction);
 
-    const finalizedNodes = layoutedNodes.map(n => ({
+    const finalized = lN.map(n => ({
       ...n,
-      data: { ...n.data, onDeepDive: handleDeepDive }
+      data: {
+        ...n.data,
+        onDeepDive: handleDeepDive,
+        onDeleteNode: handleDeleteNode,
+        onUpdateNode: handleUpdateNode,
+      }
     }));
 
-    setNodes(finalizedNodes);
-    setEdges(layoutedEdges);
-  }, [nodes, diagramType, handleDeepDive]);
+    setNodes(finalized);
+    setEdges(lE);
+    pushHistory(finalized, lE);
+  }, [nodes, diagramType, handleDeepDive, handleDeleteNode, handleUpdateNode, pushHistory]);
 
+  // ── Export PNG ────────────────────────────────────────────
   const handleExport = useCallback(() => {
     const rfElement = document.querySelector('.react-flow__viewport');
     if (!rfElement) return;
@@ -108,8 +192,7 @@ function App() {
       nodesBounds,
       nodesBounds.width + padding * 2,
       nodesBounds.height + padding * 2,
-      0.1,
-      2
+      0.1, 2
     );
 
     toPng(rfElement, {
@@ -129,11 +212,11 @@ function App() {
         link.href = dataUrl;
         link.click();
       })
-      .catch((error) => {
-        console.error('Error generating image:', error);
-        alert('Failed to export image. Make sure the graph is not excessively large.');
-      });
+      .catch(() => alert('Failed to export image.'));
   }, [nodes, diagramType]);
+
+  const canUndo = () => historyIndexRef.current > 0;
+  const canRedo = () => historyIndexRef.current < historyRef.current.length - 1;
 
   return (
     <div className="app-container">
@@ -144,15 +227,52 @@ function App() {
         onEdgesChange={onEdgesChange}
       />
 
-      <div className="add-flora-container" style={{ display: 'flex', gap: '16px' }}>
+      <div className="add-flora-container" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        {/* Undo / Redo */}
+        <div className="toolbar-group">
+          <button
+            className="toolbar-icon-btn"
+            onClick={handleUndo}
+            title="Deshacer (Ctrl+Z)"
+            disabled={!nodes.length && historyIndexRef.current === 0}
+          >
+            <Undo2 size={18} />
+          </button>
+          <button
+            className="toolbar-icon-btn"
+            onClick={handleRedo}
+            title="Rehacer (Ctrl+Y)"
+          >
+            <Redo2 size={18} />
+          </button>
+        </div>
+
+        {/* Main action */}
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus size={20} /> Add a Flora
         </Button>
 
         {nodes.length > 0 && (
-          <Button onClick={handleExport}>
-            <Download size={20} /> Export PNG
-          </Button>
+          <>
+            {/* Presentation mode */}
+            <Button onClick={() => setIsPresentationOpen(true)} className="btn-present">
+              <Presentation size={18} /> Presentar
+            </Button>
+
+            {/* Export */}
+            <Button onClick={handleExport}>
+              <Download size={18} /> Export
+            </Button>
+
+            {/* Clear canvas */}
+            <button
+              className="toolbar-icon-btn toolbar-icon-btn--danger"
+              onClick={handleClearCanvas}
+              title="Limpiar canvas"
+            >
+              <Trash2 size={18} />
+            </button>
+          </>
         )}
       </div>
 
@@ -163,6 +283,14 @@ function App() {
         diagramType={diagramType}
         setDiagramType={setDiagramType}
       />
+
+      {isPresentationOpen && (
+        <PresentationMode
+          nodes={nodes}
+          edges={edges}
+          onClose={() => setIsPresentationOpen(false)}
+        />
+      )}
     </div>
   );
 }

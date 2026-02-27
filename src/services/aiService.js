@@ -2,14 +2,14 @@ import Groq from 'groq-sdk';
 
 // --- Shared Groq singleton ---
 const groqClient = new Groq({
-    apiKey: import.meta.env.VITE_GROQ_API_KEY,
-    dangerouslyAllowBrowser: true
+  apiKey: import.meta.env.VITE_GROQ_API_KEY,
+  dangerouslyAllowBrowser: true
 });
 
 // ─── Per-diagram system prompts ────────────────────────────────────────────
 
 const PROMPTS = {
-    'Diagrama de Flujo': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+  'Diagrama de Flujo': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
 Eres un experto en diagramas de flujo de procesos (Flowcharts).
 Genera un "${detailLevel}" diagrama de flujo con ${nodeCountHint} nodos.
 
@@ -41,7 +41,7 @@ RESPONDE ÚNICAMENTE con JSON válido:
 }
 REGLAS: Sin markdown. Sin posiciones. IDs de texto. Solo JSON.`,
 
-    'Mapa Mental': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+  'Mapa Mental': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
 Eres un experto en Mapas Mentales.
 Genera un mapa mental con ${nodeCountHint} nodos totales.
 
@@ -72,7 +72,7 @@ RESPONDE ÚNICAMENTE con JSON válido:
 }
 REGLAS: Sin markdown. Sin posiciones. Solo JSON.`,
 
-    'Mapa Conceptual': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+  'Mapa Conceptual': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
 Eres un experto en Mapas Conceptuales jerárquicos.
 Genera un mapa conceptual con ${nodeCountHint} nodos.
 
@@ -101,7 +101,7 @@ RESPONDE ÚNICAMENTE con JSON válido:
 }
 REGLAS: Sin markdown. Sin posiciones. Solo JSON. TODOS los edges con label de relación.`,
 
-    'Árbol de Decisiones': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+  'Árbol de Decisiones': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
 Eres un experto en Árboles de Decisión.
 Genera un árbol de decisión con ${nodeCountHint} nodos.
 
@@ -133,7 +133,7 @@ RESPONDE ÚNICAMENTE con JSON válido:
 }
 REGLAS: Sin markdown. Sin posiciones. Solo JSON. Todos los edges del árbol con label.`,
 
-    'Diagrama de Secuencia': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+  'Diagrama de Secuencia': (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
 Eres un experto en Diagramas de Secuencia.
 Genera un diagrama de secuencia con ${nodeCountHint} nodos.
 
@@ -171,60 +171,141 @@ Usa types: "flora", "decision", "risk", "example".
 RESPONDE ÚNICAMENTE con JSON válido: { "nodes": [...], "edges": [...] }
 REGLAS: Sin markdown. Sin posiciones. Solo JSON.`;
 
+// ── Dashboard de Datos prompt ────────────────────────────────
+const DASHBOARD_PROMPT = (detailLevel, nodeCountHint, descriptionHint, tone, theme) => `
+Eres un experto en dashboards de datos y visualización de información.
+Genera un Dashboard de Datos con ${nodeCountHint} nodos, cada uno representando una métrica o KPI sobre el tema.
+
+REGLAS OBLIGATORIAS:
+- Todos los nodos son type "flora"
+- CADA nodo DEBE tener un campo "chartData" con datos numéricos reales y realistas
+- El campo "content" debe ser una insight breve (1 oración) sobre los datos
+- Los nodos NO tienen jerarquía estricta, el primer nodo es el KPI principal
+
+FORMATO DE chartData:
+{
+  "type": "bar" | "line" | "donut" | "radial",
+  "values": [número, ...],
+  "labels": ["etiqueta", ...],
+  "color": "#hexcolor",
+  "unit": "etiqueta de unidad"
+}
+
+REGLAS MATEMÁTICAS ESTRICTAS POR TIPO (¡Cumplirlas es mandatorio!):
+- "bar" / "line": "values" y "labels" DEBEN tener EXACTAMENTE la misma longitud (mínimo 3, máximo 8). Los números deben mostrar una tendencia lógica (ej. si es crecimiento, los números deben subir).
+- "donut": Los números en "values" DEBEN SUMAR EXACTAMENTE 100 (son porcentajes). Las "labels" deben coincidir en cantidad.
+- "radial": "values" DEBE ser un array con EXACTAMENTE UN SOLO NÚMERO entre 0 y 100 (ej: [75]). "labels" debe tener EXACTAMENTE UNA etiqueta (ej: ["Completado"]).
+
+TONO: "${tone}". TEMÁTICA: "${theme}".
+
+RESPONDE ÚNICAMENTE con JSON:
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "flora",
+      "data": {
+        "title": "Nombre del KPI",
+        "content": "Insight de una oración.",
+        "chartData": {
+          "type": "bar",
+          "values": [42, 68, 55, 90, 74],
+          "labels": ["Ene", "Feb", "Mar", "Abr", "May"],
+          "color": "#42f57e",
+          "unit": "k USD"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2", "animated": false }
+  ]
+}
+REGLAS: Sin markdown. Sin posiciones. Solo JSON.`;
+
+// ── Chart addon suffix for any diagram type ──────────────────
+const CHART_ADDON = `
+
+MODO GRÁFICAS ACTIVADO:
+Además del contenido textual habitual, cada nodo DEBE incluir un campo "chartData" con datos numéricos relevantes al concepto del nodo.
+
+FORMATO:
+"chartData": {
+  "type": "bar" | "line" | "donut" | "radial",
+  "values": [n1, n2, ...],
+  "labels": ["l1", "l2", ...],
+  "color": "#hexcolor",
+  "unit": "texto"
+}
+
+REGLAS MATEMÁTICAS ESTRICTAS PARA "chartData" (¡Cumplirlas es mandatorio!):
+1. "bar" o "line": "values" y "labels" DEBEN tener EXACTAMENTE la misma cantidad de elementos (min 3, max 8). Los datos deben ser coherentes (ej. si es un histórico de ventas, deben mostrar una progresión lógica).
+2. "donut": Los números en "values" DEBEN SUMAR EXACTAMENTE 100 y representar partes de un todo. "labels" debe tener la misma cantidad de elementos.
+3. "radial": "values" DEBE tener un ÚNICO valor entre 0 y 100 (ej: [85]). "labels" DEBE tener UNA SOLA etiqueta.
+
+Inventa datos realistas y matemáticamente perfectos. La gráfica debe aportar valor visual coherente al nodo.`;
+
 // ─── generateFlowchart ──────────────────────────────────────────────────────
 
-export async function generateFlowchart(prompt, detailLevel, tone = 'Informativo', theme = 'Naturaleza', diagramType = 'Diagrama de Flujo') {
-    if (!import.meta.env.VITE_GROQ_API_KEY) {
-        throw new Error('API Key de Groq no configurada. Por favor, añade VITE_GROQ_API_KEY en el archivo .env.');
-    }
+export async function generateFlowchart(prompt, detailLevel, tone = 'Informativo', theme = 'Naturaleza', diagramType = 'Diagrama de Flujo', withCharts = false) {
+  if (!import.meta.env.VITE_GROQ_API_KEY) {
+    throw new Error('API Key de Groq no configurada. Por favor, añade VITE_GROQ_API_KEY en el archivo .env.');
+  }
 
-    let nodeCountHint, descriptionHint;
-    if (detailLevel === 'Condensado') {
-        nodeCountHint = '4 a 6 nodos';
-        descriptionHint = 'un resumen conciso de 1 a 2 oraciones';
-    } else if (detailLevel === 'Estándar') {
-        nodeCountHint = '7 a 12 nodos';
-        descriptionHint = 'una explicación clara de 2 a 3 oraciones';
-    } else {
-        nodeCountHint = '13 a 20 nodos';
-        descriptionHint = 'un análisis detallado paso a paso';
-    }
+  let nodeCountHint, descriptionHint;
+  if (detailLevel === 'Condensado') {
+    nodeCountHint = '4 a 6 nodos';
+    descriptionHint = 'un resumen conciso de 1 a 2 oraciones';
+  } else if (detailLevel === 'Estándar') {
+    nodeCountHint = '7 a 12 nodos';
+    descriptionHint = 'una explicación clara de 2 a 3 oraciones';
+  } else {
+    nodeCountHint = '13 a 20 nodos';
+    descriptionHint = 'un análisis detallado paso a paso';
+  }
 
+  // Dashboard de Datos uses its own dedicated prompt
+  let systemPrompt;
+  if (diagramType === 'Dashboard de Datos') {
+    systemPrompt = DASHBOARD_PROMPT(detailLevel, nodeCountHint, descriptionHint, tone, theme);
+  } else {
     const promptFn = PROMPTS[diagramType];
-    const systemPrompt = promptFn
-        ? promptFn(detailLevel, nodeCountHint, descriptionHint, tone, theme)
-        : DEFAULT_PROMPT(diagramType, detailLevel, nodeCountHint, descriptionHint, tone, theme);
+    const base = promptFn
+      ? promptFn(detailLevel, nodeCountHint, descriptionHint, tone, theme)
+      : DEFAULT_PROMPT(diagramType, detailLevel, nodeCountHint, descriptionHint, tone, theme);
+    systemPrompt = withCharts ? base + CHART_ADDON : base;
+  }
 
-    const userMessage = `Tema para el diagrama: "${prompt}"\n\nGenera el ${diagramType} completo sobre este tema aplicando todo el conocimiento que tengas sobre él.`;
+  const userMessage = `Tema para el diagrama: "${prompt}"\n\nGenera el ${diagramType} completo sobre este tema aplicando todo el conocimiento que tengas sobre él.`;
 
-    const chatCompletion = await groqClient.chat.completions.create({
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage }
-        ],
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.15,
-        max_completion_tokens: 4096,
-        response_format: { type: 'json_object' }
-    });
+  const chatCompletion = await groqClient.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ],
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.15,
+    max_completion_tokens: 4096,
+    response_format: { type: 'json_object' }
+  });
 
-    const contentStr = chatCompletion.choices[0]?.message?.content || '';
+  const contentStr = chatCompletion.choices[0]?.message?.content || '';
 
-    try {
-        return JSON.parse(contentStr);
-    } catch (e) {
-        throw new Error('La IA no devolvió un formato JSON válido.');
-    }
+  try {
+    return JSON.parse(contentStr);
+  } catch (e) {
+    throw new Error('La IA no devolvió un formato JSON válido.');
+  }
 }
 
 // ─── expandNode ────────────────────────────────────────────────────────────
 
 export async function expandNode(parentNode, tone = 'Informativo', theme = 'Naturaleza') {
-    if (!import.meta.env.VITE_GROQ_API_KEY) {
-        throw new Error('Missing VITE_GROQ_API_KEY in environment variables.');
-    }
+  if (!import.meta.env.VITE_GROQ_API_KEY) {
+    throw new Error('Missing VITE_GROQ_API_KEY in environment variables.');
+  }
 
-    const systemPrompt = `Eres un experto en expandir nodos de diagramas interactivos.
+  const systemPrompt = `Eres un experto en expandir nodos de diagramas interactivos.
 Toma el nodo padre dado y genera de 3 a 5 nodos hijos que profundicen en su concepto.
 Hereda el mismo tipo de diagrama y estilo del padre.
 
@@ -250,30 +331,30 @@ RESPONDE ÚNICAMENTE con JSON:
   ]
 }`;
 
-    const userMessage = `Expande el siguiente nodo:
+  const userMessage = `Expande el siguiente nodo:
 ID: "${parentNode.id}"
 Título: "${parentNode.data.title}"
 Contenido: "${parentNode.data.content}"
 Tipo de diagrama: "${parentNode.data.diagramType ?? 'Diagrama de Flujo'}"`;
 
-    const chatCompletion = await groqClient.chat.completions.create({
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage }
-        ],
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.8,
-        max_completion_tokens: 4000,
-        response_format: { type: 'json_object' }
-    });
+  const chatCompletion = await groqClient.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ],
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.8,
+    max_completion_tokens: 4000,
+    response_format: { type: 'json_object' }
+  });
 
-    const responseText = chatCompletion.choices[0]?.message?.content || '';
+  const responseText = chatCompletion.choices[0]?.message?.content || '';
 
-    try {
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        return JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
-    } catch (error) {
-        console.error('Error parsing expansion JSON:', error);
-        throw new Error('Failed to expand node.');
-    }
+  try {
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    return JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+  } catch (error) {
+    console.error('Error parsing expansion JSON:', error);
+    throw new Error('Failed to expand node.');
+  }
 }

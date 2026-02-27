@@ -116,20 +116,25 @@ button.magical-button:disabled {
   background: rgba(10, 20, 13, 0.95);
   backdrop-filter: blur(16px);
   border-radius: 20px;
-  padding: 40px;
+  padding: 28px 28px 24px;
   width: 90%;
-  max-width: 650px;
+  max-width: 620px;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 60px rgba(66, 245, 126, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 18px;
   position: relative;
   border: 1px solid rgba(66, 245, 126, 0.4);
   color: #e2e8f0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(66, 245, 126, 0.3) transparent;
 }
 
 .modal-header {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
   text-align: center;
   color: #fff;
@@ -139,8 +144,8 @@ button.magical-button:disabled {
 
 .modal-textarea {
   width: 100%;
-  min-height: 140px;
-  padding: 18px;
+  min-height: 90px;
+  padding: 14px;
   border: 1px solid rgba(66, 245, 126, 0.3);
   border-radius: 12px;
   font-family: inherit;
@@ -283,8 +288,69 @@ button.magical-button:disabled {
   font-size: 16px;
   color: #fff;
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  gap: 6px;
 }
 
+/* Node action buttons group (edit, expand, delete) */
+.node-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.flora-node:hover .node-actions,
+.flora-node.is-editing .node-actions {
+  opacity: 1;
+}
+
+/* Base style shared by all icon action buttons */
+.flora-node-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  line-height: 0;
+}
+
+/* Edit (pencil) */
+.flora-node-action-btn.edit-btn {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.flora-node-action-btn.edit-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Save (check) */
+.flora-node-action-btn.save-btn {
+  color: var(--glow-color-bright);
+}
+
+.flora-node-action-btn.save-btn:hover {
+  background: rgba(66, 245, 126, 0.15);
+  color: #fff;
+}
+
+/* Delete (×) */
+.flora-node-action-btn.delete-btn {
+  color: rgba(252, 165, 165, 0.5);
+}
+
+.flora-node-action-btn.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+/* Expand/collapse toggle */
 .flora-node-toggle {
   background: none;
   border: none;
@@ -302,6 +368,84 @@ button.magical-button:disabled {
   background-color: rgba(66, 245, 126, 0.1);
   color: var(--glow-color-bright);
 }
+
+/* Title double-click hint */
+.node-title {
+  flex: 1;
+  overflow-wrap: break-word;
+  cursor: default;
+  user-select: none;
+}
+
+.node-title:hover {
+  text-decoration: underline dashed rgba(255, 255, 255, 0.3);
+  text-underline-offset: 3px;
+}
+
+/* Inline title input */
+.node-title-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glow-color);
+  border-radius: 6px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 2px 8px;
+  outline: none;
+  min-width: 0;
+  box-shadow: 0 0 8px rgba(66, 245, 126, 0.2);
+}
+
+.node-title-input:focus {
+  border-color: var(--glow-color-bright);
+  box-shadow: 0 0 12px rgba(66, 245, 126, 0.4);
+}
+
+/* Content textarea for editing */
+.node-content-textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(66, 245, 126, 0.3);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  margin-top: 4px;
+}
+
+.node-content-textarea:focus {
+  border-color: var(--glow-color);
+  box-shadow: 0 0 8px rgba(66, 245, 126, 0.15);
+}
+
+/* Per-diagram-type title input accent */
+.dt-conceptual .node-title-input {
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.dt-mental .node-title-input {
+  border-color: #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.25);
+}
+
+.dt-decisiones .node-title-input {
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+}
+
+.dt-secuencia .node-title-input {
+  border-color: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.25);
+}
+
 
 .flora-node-content {
   margin-top: 12px;
@@ -800,4 +944,626 @@ button.magical-button:disabled {
   color: #fff;
   text-shadow: 0 0 15px rgba(147, 197, 253, 0.7);
   letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN
+   ≤ 1024px  Tablet
+   ≤ 768px   Mobile
+   ============================================================ */
+
+/* ── Tablet (≤ 1024px) ─────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .modal-content {
+    padding: 28px 24px;
+    max-width: 90vw;
+  }
+
+  .modal-header {
+    font-size: 22px;
+  }
+
+  .flora-node {
+    width: 280px;
+  }
+
+  .shape-concept-root {
+    width: 500px !important;
+  }
+}
+
+/* ── Mobile (≤ 768px) ──────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* --- Modal: full-screen bottom sheet --- */
+  .modal-overlay {
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92dvh;
+    /* dynamic viewport height for iOS Safari */
+    border-radius: 24px 24px 0 0;
+    padding: 20px 16px 32px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 18px;
+  }
+
+  .modal-header {
+    font-size: 20px;
+  }
+
+  .modal-textarea {
+    min-height: 100px;
+    font-size: 15px;
+    padding: 14px;
+  }
+
+  .modal-customization-grid {
+    padding: 14px;
+    gap: 16px;
+  }
+
+  .modal-detail-options {
+    gap: 8px;
+  }
+
+  .modal-detail-options button {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .modal-footer {
+    margin-top: 8px;
+    padding-top: 16px;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Bottom action bar --- */
+  .add-flora-container {
+    bottom: 24px;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0 16px;
+    width: 100%;
+    left: 0;
+    transform: none;
+  }
+
+  button.magical-button {
+    font-size: 14px;
+    padding: 11px 18px;
+    border-radius: 50px;
+  }
+
+  /* --- Nodes --- */
+  .flora-node {
+    width: 220px;
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .flora-node-header {
+    font-size: 14px;
+  }
+
+  .flora-node-content {
+    font-size: 13px;
+  }
+
+  /* Compact shapes maintain their size */
+  .shape-terminal {
+    width: 130px !important;
+    min-height: 48px !important;
+  }
+
+  .shape-diamond {
+    width: 130px !important;
+    min-height: 130px !important;
+  }
+
+  .shape-circle {
+    width: 90px !important;
+    height: 90px !important;
+    min-height: 90px !important;
+  }
+
+  .shape-outcome {
+    width: 160px !important;
+  }
+
+  .shape-pill,
+  .shape-root {
+    min-width: 120px !important;
+    max-width: 220px !important;
+    padding: 10px 20px !important;
+  }
+
+  .shape-concept-root {
+    width: auto !important;
+    min-width: 200px !important;
+    font-size: 16px;
+  }
+
+  /* --- ReactFlow controls --- */
+  .react-flow__controls {
+    bottom: 80px !important;
+    left: 12px !important;
+  }
+
+  .react-flow__controls button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* --- Action buttons: always visible on mobile (no hover state) --- */
+  .node-actions {
+    opacity: 1 !important;
+  }
+
+  /* Slightly larger touch targets */
+  .flora-node-action-btn {
+    padding: 6px;
+    border-radius: 8px;
+  }
+
+  /* --- Touch hint at bottom --- */
+  .touch-hint {
+    display: block;
+  }
+}
+
+/* Touch hint element (mobile only) */
+.touch-hint {
+  display: none;
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* ── Very small screens (≤ 380px) ──────────────────────────── */
+@media (max-width: 380px) {
+  button.magical-button {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .modal-content {
+    padding: 16px 12px 28px;
+  }
+
+  .flora-node {
+    width: 190px;
+  }
+}
+
+/* ============================================================
+   TOOLBAR ICON BUTTONS (undo, redo, trash)
+   ============================================================ */
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(10, 20, 13, 0.8);
+  border: 1px solid rgba(66, 245, 126, 0.2);
+  border-radius: 50px;
+  padding: 4px 6px;
+}
+
+.toolbar-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s;
+}
+
+.toolbar-icon-btn:hover:not(:disabled) {
+  background: rgba(66, 245, 126, 0.1);
+  color: #fff;
+}
+
+.toolbar-icon-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.toolbar-icon-btn--danger {
+  color: rgba(252, 165, 165, 0.5);
+  background: rgba(10, 20, 13, 0.8);
+  border: 1px solid rgba(66, 245, 126, 0.2);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+}
+
+.toolbar-icon-btn--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ============================================================
+   PRESENTATION MODE
+   ============================================================ */
+
+.presentation-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 3, 0.97);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 20px;
+  overflow: hidden;
+}
+
+/* Progress bar */
+.pres-progress-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.pres-progress-fill {
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Top bar */
+.pres-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 860px;
+  padding: 16px 24px 0;
+  flex-shrink: 0;
+}
+
+.pres-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 50px;
+  text-transform: uppercase;
+}
+
+.pres-counter {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 1px;
+}
+
+.pres-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s;
+}
+
+.pres-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+/* Stage */
+.pres-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 20px 24px;
+  overflow: hidden;
+}
+
+.pres-slide {
+  background: rgba(10, 20, 13, 0.7);
+  border: 1px solid transparent;
+  border-radius: 24px;
+  padding: 52px 56px;
+  max-width: 760px;
+  width: 100%;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pres-node-type {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+.pres-title {
+  font-size: clamp(22px, 4vw, 38px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.pres-content {
+  font-size: clamp(15px, 2vw, 19px);
+  color: #94a3b8;
+  line-height: 1.8;
+}
+
+.pres-empty {
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+}
+
+/* Navigation */
+.pres-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.pres-nav-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s;
+}
+
+.pres-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.pres-nav-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* Dot indicators */
+.pres-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 300px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pres-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.pres-dot.active {
+  transform: scale(1.4);
+}
+
+.pres-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pres-slide {
+    padding: 32px 24px;
+    border-radius: 16px;
+  }
+
+  .pres-nav-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pres-hint {
+    display: none;
+  }
+
+  .toolbar-group {
+    padding: 3px 4px;
+  }
+
+  .toolbar-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ============================================================
+   CHARTS & DASHBOARD
+   ============================================================ */
+
+/* AddFloraModal Charts Toggle */
+.charts-toggle-row {
+  display: flex;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(66, 245, 126, 0.2);
+  margin-top: 6px;
+}
+
+.charts-toggle-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.charts-toggle-btn.active {
+  background: rgba(66, 245, 126, 0.15);
+  color: var(--glow-color-bright);
+}
+
+.charts-toggle-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+  font-style: italic;
+  text-align: center;
+}
+
+.dashboard-badge {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* Dashboard Node Shape */
+.flora-node.shape-dashboard {
+  width: 280px !important;
+  border-radius: 16px !important;
+  background: rgba(10, 24, 32, 0.95) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.15) !important;
+}
+
+.dt-dashboard .node-title {
+  color: #38bdf8 !important;
+  text-align: center;
+  font-size: 15px;
+}
+
+.dt-dashboard .flora-node-content {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 12px;
+}
+
+/* MiniChart Styles */
+.mini-chart-wrapper {
+  width: 100%;
+  height: 90px;
+  margin: 12px 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mini-chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mini-chart-unit {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Initial animation for charts when node expands */
+.flora-node.expanded .mini-chart-wrapper {
+  animation: chartReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes chartReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Presentation Mode Chart Overrides */
+.pres-slide .mini-chart-wrapper {
+  height: clamp(160px, 20vh, 260px);
+  margin: 10px 0;
+  animation: none;
+  /* Already handles entry via Framer Motion */
+}
+
+.pres-slide .mini-chart-svg {
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+}
+
+.pres-slide .mini-chart-unit {
+  font-size: 11px;
+  top: -12px;
 }

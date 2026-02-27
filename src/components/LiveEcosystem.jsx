@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNodes, useViewport } from 'reactflow';
-import { AntSVG, BeetleSVG, FrogSVG, CentipedeSVG } from './InsectSVGs';
+import { AntSVG, BeetleSVG, FrogSVG, CentipedeSVG, ButterflySVG, BeeSVG, LadybugSVG, FireflySVG } from './InsectSVGs';
 import { useInsects } from '../hooks/useInsects';
 
 const WANDER_JITTER = 0.1;
@@ -10,6 +10,10 @@ const SVG_MAP = {
     beetle: BeetleSVG,
     frog: FrogSVG,
     centipede: CentipedeSVG,
+    butterfly: ButterflySVG,
+    bee: BeeSVG,
+    ladybug: LadybugSVG,
+    firefly: FireflySVG,
 };
 
 export default function LiveEcosystem() {
@@ -42,11 +46,45 @@ export default function LiveEcosystem() {
                 insect.timer += 1;
                 const currentNodes = nodesRef.current;
 
-                // Node attraction — pick a focus node every ~150 ticks
-                if (currentNodes.length > 0 && insect.timer % 150 === 0) {
+                // Node attraction — pick a focus node
+                let focusTime = 150;
+                if (insect.type === 'bee' || insect.type === 'butterfly') focusTime = 80;
+                if (currentNodes.length > 0 && insect.timer % focusTime === 0) {
                     insect.focusNode = Math.random() > 0.3
                         ? currentNodes[Math.floor(Math.random() * currentNodes.length)]
                         : null;
+                }
+
+                // Custom movement based on type
+                let typeJitter = WANDER_JITTER;
+                let turnSpeed = 0.05;
+                let focusMoveMult = 1.5;
+                let wanderMoveMult = 0.5;
+
+                if (insect.type === 'butterfly') {
+                    typeJitter = 0.8;
+                    turnSpeed = 0.1;
+                    wanderMoveMult = 1.2;
+                } else if (insect.type === 'bee') {
+                    typeJitter = 0.2;
+                    turnSpeed = 0.15;
+                    focusMoveMult = 2.5;
+                    wanderMoveMult = 1.0;
+                } else if (insect.type === 'frog') {
+                    if (insect.timer % 60 < 10) {
+                        wanderMoveMult = 4.0;
+                        focusMoveMult = 4.0;
+                    } else {
+                        wanderMoveMult = 0;
+                        focusMoveMult = 0;
+                    }
+                } else if (insect.type === 'firefly') {
+                    typeJitter = 0.4;
+                    turnSpeed = 0.02;
+                    wanderMoveMult = 0.3;
+                } else if (insect.type === 'ladybug') {
+                    typeJitter = 0.05;
+                    wanderMoveMult = 0.2;
                 }
 
                 if (insect.focusNode && currentNodes.find(n => n.id === insect.focusNode.id)) {
@@ -65,9 +103,9 @@ export default function LiveEcosystem() {
                     } else {
                         insect.targetAngle = Math.atan2(dy, dx);
                         const diff = Math.atan2(Math.sin(insect.targetAngle - insect.angle), Math.cos(insect.targetAngle - insect.angle));
-                        insect.angle += diff * 0.1;
-                        insect.x += Math.cos(insect.angle) * (1.5 * insect.speedMult);
-                        insect.y += Math.sin(insect.angle) * (1.5 * insect.speedMult);
+                        insect.angle += diff * turnSpeed * 2;
+                        insect.x += Math.cos(insect.angle) * (focusMoveMult * insect.speedMult);
+                        insect.y += Math.sin(insect.angle) * (focusMoveMult * insect.speedMult);
                     }
                 } else {
                     // Wander mode
@@ -83,10 +121,10 @@ export default function LiveEcosystem() {
                     if (insect.y > height + margin) insect.targetAngle = -Math.PI / 2;
 
                     const diff = Math.atan2(Math.sin(insect.targetAngle - insect.angle), Math.cos(insect.targetAngle - insect.angle));
-                    insect.angle += diff * 0.05;
-                    insect.angle += (Math.random() - 0.5) * WANDER_JITTER;
-                    insect.x += Math.cos(insect.angle) * (0.5 * insect.speedMult);
-                    insect.y += Math.sin(insect.angle) * (0.5 * insect.speedMult);
+                    insect.angle += diff * turnSpeed;
+                    insect.angle += (Math.random() - 0.5) * typeJitter;
+                    insect.x += Math.cos(insect.angle) * (wanderMoveMult * insect.speedMult);
+                    insect.y += Math.sin(insect.angle) * (wanderMoveMult * insect.speedMult);
                 }
 
                 // Apply transform directly — SVG faces up, so add π/2 to align with math angle
